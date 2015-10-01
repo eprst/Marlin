@@ -2553,7 +2553,9 @@ DaveX plan for Teensylu/printrboard-type pinouts (ref teensylu & sprinter) for a
 
 #endif
 
-#define TEMP_1_PIN         15   // ANALOG NUMBERING
+// #define TEMP_1_PIN         15   // ANALOG NUMBERING
+// KS: no second extruder
+#define TEMP_1_PIN         -1   // ANALOG NUMBERING
 #define TEMP_2_PIN         -1   // ANALOG NUMBERING
 #define HEATER_BED_PIN     10   // BED
 #define TEMP_BED_PIN       14   // ANALOG NUMBERING

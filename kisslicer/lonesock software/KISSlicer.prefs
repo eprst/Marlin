@@ -1,0 +1,47 @@
+; FLTK preferences file format 1.0
+; vendor: lonesock software
+; application: KISSlicer
+
+[.]
+
+
+[./key]
+
+app_UUID:F482024C-899F-4A9D-B7AB-D587221633DE
+
+[./selections]
+
+printer_id:1
+style_id:0
+material_id:2
+support_id:0
+setting_tab:Style
+quality_val:100
+color_scheme_val:1
+place_x:0
+place_y:0
+oversample_val:0.125
+crowning_val:1
+rotate_models:4
+preview_on_load:0
+memory_threshold_MB:4096
+show_model_Z:0
+users_experience_level:2
+default_advanced_settings:0
+avoid_overwriting_files:4
+disable_3d_preview:0
+slice_and_save:0
+translate_tooltips_only:0
+show_mesh_error_key:1
+warn_material_change:4
+
+[./GUI]
+
+fore_color:-225627136
+back_color:-858993664
+back_3D_color:252645120
+win_x:204
+win_y:67
+win_w:1159
+win_h:940
+language_file:

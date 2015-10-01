@@ -37,10 +37,10 @@
 # from the commandline with "make HARDWARE_MOTHERBOARD=71" for example
 
 # This defined the board you are compiling for (see Configuration.h for the options)
-HARDWARE_MOTHERBOARD ?= 11
+HARDWARE_MOTHERBOARD ?= 33
 
 # Arduino source install directory, and version number
-ARDUINO_INSTALL_DIR  ?= /Applications/Arduino.app/Contents/Resources/Java
+ARDUINO_INSTALL_DIR  ?= /usr/share/arduino
 ARDUINO_VERSION      ?= 105
 
 # You can optionally set a path to the avr-gcc tools. Requires a trailing slash. (ex: /usr/local/avr-gcc/bin)
@@ -48,8 +48,11 @@ AVR_TOOLS_PATH ?=
 
 #Programmer configuration
 UPLOAD_RATE        ?= 115200
-AVRDUDE_PROGRAMMER ?= arduino
-UPLOAD_PORT        ?= /dev/arduino
+# KS
+# AVRDUDE_PROGRAMMER ?= arduino
+AVRDUDE_PROGRAMMER ?= wiring
+# UPLOAD_PORT        ?= /dev/arduino
+UPLOAD_PORT        ?= /dev/ttyACM0
 
 #Directory used to build files in, contains all the build files, from object files to the final hex file.
 BUILD_DIR          ?= applet
@@ -221,6 +224,9 @@ TARGET = $(notdir $(CURDIR))
 VPATH = .
 VPATH += $(BUILD_DIR)
 VPATH += $(HARDWARE_SRC)
+# KS
+VPATH += ../ArduinoAddons/Arduino_1.5.x/hardware/marlin/avr/libraries/U8glib
+VPATH += ../ArduinoAddons/Arduino_1.5.x/hardware/marlin/avr/libraries/U8glib/utility
 ifeq ($(HARDWARE_VARIANT), arduino)
 VPATH += $(ARDUINO_INSTALL_DIR)/libraries/LiquidCrystal
 VPATH += $(ARDUINO_INSTALL_DIR)/libraries/SPI
@@ -286,6 +292,10 @@ else
 SRC += pins_arduino.c main.c
 endif
 
+#U8
+CXXSRC += U8glib.cpp
+SRC += u8g_bitmap.c u8g_circle.c u8g_clip.c u8g_com_api_16gr.c u8g_com_api.c u8g_com_arduino_common.c u8g_com_arduino_fast_parallel.c u8g_com_arduino_hw_spi.c u8g_com_arduino_no_en_parallel.c u8g_com_arduino_parallel.c u8g_com_arduino_port_d_wr.c u8g_com_arduino_ssd_i2c.c u8g_com_arduino_st7920_hw_spi.c u8g_com_arduino_st7920_spi.c u8g_com_arduino_std_sw_spi.c u8g_com_arduino_sw_spi.c u8g_com_arduino_t6963.c u8g_com_atmega_hw_spi.c u8g_com_atmega_parallel.c u8g_com_atmega_st7920_hw_spi.c u8g_com_atmega_st7920_spi.c u8g_com_atmega_sw_spi.c u8g_com_i2c.c u8g_com_io.c u8g_com_null.c u8g_cursor.c u8g_delay.c u8g_dev_flipdisc_2x7.c u8g_dev_gprof.c u8g_dev_ili9325d_320x240.c u8g_dev_ks0108_128x64.c u8g_dev_lc7981_160x80.c u8g_dev_lc7981_240x128.c u8g_dev_lc7981_240x64.c u8g_dev_lc7981_320x64.c u8g_dev_null.c u8g_dev_pcd8544_84x48.c u8g_dev_pcf8812_96x65.c u8g_dev_sbn1661_122x32.c u8g_dev_ssd1306_128x32.c u8g_dev_ssd1306_128x64.c u8g_dev_ssd1309_128x64.c u8g_dev_ssd1322_nhd31oled_bw.c u8g_dev_ssd1322_nhd31oled_gr.c u8g_dev_ssd1325_nhd27oled_bw.c u8g_dev_ssd1325_nhd27oled_bw_new.c u8g_dev_ssd1325_nhd27oled_gr.c u8g_dev_ssd1325_nhd27oled_gr_new.c u8g_dev_ssd1327_96x96_gr.c u8g_dev_st7565_64128n.c u8g_dev_st7565_dogm128.c u8g_dev_st7565_dogm132.c u8g_dev_st7565_lm6059.c u8g_dev_st7565_lm6063.c u8g_dev_st7565_nhd_c12832.c u8g_dev_st7565_nhd_c12864.c u8g_dev_st7687_c144mvgd.c u8g_dev_st7920_128x64.c u8g_dev_st7920_192x32.c u8g_dev_st7920_202x32.c u8g_dev_t6963_128x64.c u8g_dev_t6963_240x128.c u8g_dev_t6963_240x64.c u8g_dev_tls8204_84x48.c u8g_dev_uc1610_dogxl160.c u8g_dev_uc1701_dogs102.c u8g_dev_uc1701_mini12864.c u8g_ellipse.c u8g_font.c u8g_font_data.c u8g_line.c u8g_ll_api.c u8g_page.c u8g_pb14v1.c u8g_pb16h1.c u8g_pb16h2.c u8g_pb16v1.c u8g_pb16v2.c u8g_pb32h1.c u8g_pb8h1.c u8g_pb8h1f.c u8g_pb8h2.c u8g_pb8h8.c u8g_pb8v1.c u8g_pb8v2.c u8g_pb.c u8g_rect.c u8g_rot.c u8g_scale.c u8g_state.c u8g_u16toa.c u8g_u8toa.c u8g_virtual_screen.c
+
 FORMAT = ihex
 
 # Name of this Makefile (used for "make depend").
@@ -301,8 +311,9 @@ OPT = s
 DEFINES ?=
 
 # Program settings
-CC = $(AVR_TOOLS_PATH)avr-gcc
-CXX = $(AVR_TOOLS_PATH)avr-g++
+CCACHE = ccache
+CC = $(CCACHE) $(AVR_TOOLS_PATH)avr-gcc
+CXX = $(CCACHE) $(AVR_TOOLS_PATH)avr-g++
 OBJCOPY = $(AVR_TOOLS_PATH)avr-objcopy
 OBJDUMP = $(AVR_TOOLS_PATH)avr-objdump
 AR  = $(AVR_TOOLS_PATH)avr-ar
@@ -412,8 +423,7 @@ endif
 
 	# Display size of file.
 HEXSIZE = $(SIZE) --target=$(FORMAT) $(BUILD_DIR)/$(TARGET).hex
-ELFSIZE = $(SIZE) --mcu=$(MCU) -C $(BUILD_DIR)/$(TARGET).elf; \
-          $(SIZE)  $(BUILD_DIR)/$(TARGET).elf
+ELFSIZE = $(SIZE) $(BUILD_DIR)/$(TARGET).elf
 sizebefore:
 	$P if [ -f $(BUILD_DIR)/$(TARGET).elf ]; then echo; echo $(MSG_SIZE_BEFORE); $(HEXSIZE); echo; fi
 
