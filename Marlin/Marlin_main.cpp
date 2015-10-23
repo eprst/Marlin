@@ -1046,7 +1046,18 @@ static void set_bed_level_equation_3pts(float z_at_pt_1, float z_at_pt_2, float 
 
 #endif // AUTO_BED_LEVELING_GRID
 
-static void run_z_probe() {
+static void move_z_probe_up() {
+    float feedrate = homing_feedrate[Z_AXIS];
+    float zPosition = st_get_position_mm(Z_AXIS);
+
+    // move up the retract distance
+    zPosition += home_retract_mm(Z_AXIS);
+    plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], zPosition, current_position[E_AXIS], feedrate/60, active_extruder);
+    st_synchronize();
+    current_position[Z_AXIS] += home_retract_mm(Z_AXIS);
+}
+
+static float run_z_probe(bool get_average = false) {
     plan_bed_level_matrix.set_to_identity();
     feedrate = homing_feedrate[Z_AXIS];
 
@@ -1059,20 +1070,30 @@ static void run_z_probe() {
     zPosition = st_get_position_mm(Z_AXIS);
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], zPosition, current_position[E_AXIS]);
 
-    // move up the retract distance
-    zPosition += home_retract_mm(Z_AXIS);
-    plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], zPosition, current_position[E_AXIS], feedrate/60, active_extruder);
-    st_synchronize();
+    int num_samples = get_average ? Z_PROBE_AVERAGE_POINTS : 1;
+    float z_samples_sum = 0;
 
-    // move back down slowly to find bed
-    feedrate = homing_feedrate[Z_AXIS]/4;
-    zPosition -= home_retract_mm(Z_AXIS) * 2;
-    plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], zPosition, current_position[E_AXIS], feedrate/60, active_extruder);
-    st_synchronize();
+    for (int i=0; i<num_samples; i++) {
+        move_z_probe_up();
 
-    current_position[Z_AXIS] = st_get_position_mm(Z_AXIS);
-    // make sure the planner knows where we are as it may be a bit different than we last said to move to
-    plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+        // move back down slowly to find bed
+        zPosition -= home_retract_mm(Z_AXIS) * 2;
+        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], zPosition, current_position[E_AXIS], feedrate/(60*4), active_extruder);
+        st_synchronize();
+
+        current_position[Z_AXIS] = st_get_position_mm(Z_AXIS);
+        // make sure the planner knows where we are as it may be a bit different than we last said to move to
+        plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+
+        z_samples_sum += current_position[Z_AXIS];
+        SERIAL_ECHOPAIR("Z probe result: ",current_position[Z_AXIS]);
+        SERIAL_PROTOCOLLNPGM("");
+    }
+
+    float average = z_samples_sum/num_samples;
+    SERIAL_ECHOPAIR("Z probe result average: ", average);
+    SERIAL_PROTOCOLLNPGM("");
+    return average;
 }
 
 static void do_blocking_move_to(float x, float y, float z) {
@@ -1134,6 +1155,7 @@ static void engage_z_probe() {
 }
 
 static void retract_z_probe() {
+    move_z_probe_up();
     // Retract Z Servo endstop if enabled
     #ifdef SERVO_ENDSTOPS
     if (servo_endstops[Z_AXIS] > -1) {
@@ -1150,18 +1172,17 @@ static void retract_z_probe() {
 }
 
 /// Probe bed height at position (x,y), returns the measured z value
-static float probe_pt(float x, float y, float z_before) {
+static float probe_pt(float x, float y, float z_before, bool engage_probe = false) {
   // move to right place
   do_blocking_move_to(current_position[X_AXIS], current_position[Y_AXIS], z_before);
   do_blocking_move_to(x - X_PROBE_OFFSET_FROM_EXTRUDER, y - Y_PROBE_OFFSET_FROM_EXTRUDER, current_position[Z_AXIS]);
 
 #ifndef Z_PROBE_SLED
-  engage_z_probe();   // Engage Z Servo endstop if available
+  if (engage_probe) engage_z_probe();   // Engage Z Servo endstop if available
 #endif // Z_PROBE_SLED
-  run_z_probe();
-  float measured_z = current_position[Z_AXIS];
+  float measured_z = run_z_probe(true);
 #ifndef Z_PROBE_SLED
-  retract_z_probe();
+  if (engage_probe) retract_z_probe();
 #endif // Z_PROBE_SLED
 
   SERIAL_PROTOCOLPGM(MSG_BED);
@@ -1209,6 +1230,10 @@ static void homeaxis(int axis) {
       }
     #endif
 #endif // Z_PROBE_SLED
+    int num_samples = axis==Z_AXIS ? Z_PROBE_AVERAGE_POINTS : 1;
+    float samples_sum = 0;
+
+    for (int i=0;i<num_samples;i++) {
     destination[axis] = 1.5 * max_length(axis) * axis_home_dir;
     feedrate = homing_feedrate[axis];
     plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
@@ -1242,6 +1267,17 @@ static void homeaxis(int axis) {
     feedrate = 0.0;
     endstops_hit_on_purpose();
     axis_known_position[axis] = true;
+    samples_sum += st_get_position_mm(axis);
+    }
+
+    float average = samples_sum/num_samples;
+    float delta = st_get_position_mm(axis) - average;
+    if (delta > 0.001) {
+      SERIAL_ECHOPAIR("correcting result by ", delta);
+      SERIAL_PROTOCOLLNPGM("");
+      current_position[axis] += delta;
+      destination[axis] = current_position[axis];
+    }
 
     // Retract Servo endstop if enabled
     #ifdef SERVO_ENDSTOPS
@@ -1716,6 +1752,9 @@ void process_commands()
             int probePointCounter = 0;
             bool zig = true;
 
+            #ifndef Z_PROBE_SLED
+            engage_z_probe();   // Engage Z Servo endstop if available
+            #endif // Z_PROBE_SLED
             for (int yProbe=FRONT_PROBE_BED_POSITION; yProbe <= BACK_PROBE_BED_POSITION; yProbe += yGridSpacing)
             {
               int xProbe, xInc;
@@ -1758,6 +1797,9 @@ void process_commands()
               }
             }
             clean_up_after_endstop_move();
+            #ifndef Z_PROBE_SLED
+            retract_z_probe();
+            #endif // Z_PROBE_SLED
 
             // solve lsq problem
             double *plane_equation_coefficients = qr_solve(AUTO_BED_LEVELING_GRID_POINTS*AUTO_BED_LEVELING_GRID_POINTS, 3, eqnAMatrix, eqnBVector);
@@ -1776,6 +1818,10 @@ void process_commands()
 
 #else // AUTO_BED_LEVELING_GRID not defined
 
+            #ifndef Z_PROBE_SLED
+            engage_z_probe();   // Engage Z Servo endstop if available
+            #endif // Z_PROBE_SLED
+
             // Probe at 3 arbitrary points
             // probe 1
             float z_at_pt_1 = probe_pt(ABL_PROBE_PT_1_X, ABL_PROBE_PT_1_Y, Z_RAISE_BEFORE_PROBING);
@@ -1787,6 +1833,10 @@ void process_commands()
             float z_at_pt_3 = probe_pt(ABL_PROBE_PT_3_X, ABL_PROBE_PT_3_Y, current_position[Z_AXIS] + Z_RAISE_BETWEEN_PROBINGS);
 
             clean_up_after_endstop_move();
+
+            #ifndef Z_PROBE_SLED
+            retract_z_probe();
+            #endif // Z_PROBE_SLED
 
             set_bed_level_equation_3pts(z_at_pt_1, z_at_pt_2, z_at_pt_3);
 
@@ -1820,14 +1870,14 @@ void process_commands()
 
             feedrate = homing_feedrate[Z_AXIS];
 
-            run_z_probe();
+            float z = run_z_probe(true);
             SERIAL_PROTOCOLPGM(MSG_BED);
             SERIAL_PROTOCOLPGM(" X: ");
             SERIAL_PROTOCOL(current_position[X_AXIS]);
             SERIAL_PROTOCOLPGM(" Y: ");
             SERIAL_PROTOCOL(current_position[Y_AXIS]);
             SERIAL_PROTOCOLPGM(" Z: ");
-            SERIAL_PROTOCOL(current_position[Z_AXIS]);
+            SERIAL_PROTOCOL(z);
             SERIAL_PROTOCOLPGM("\n");
 
             clean_up_after_endstop_move();

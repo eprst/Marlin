@@ -376,6 +376,8 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 #define X_MAX_LENGTH (X_MAX_POS - X_MIN_POS)
 #define Y_MAX_LENGTH (Y_MAX_POS - Y_MIN_POS)
 #define Z_MAX_LENGTH (Z_MAX_POS - Z_MIN_POS)
+
+#define Z_PROBE_AVERAGE_POINTS 3 // number of Z probes to average over
 //============================= Bed Auto Leveling ===========================
 
 #define ENABLE_AUTO_BED_LEVELING // Delete the comment to enable (remove // at the start of the line)
@@ -438,7 +440,7 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
   // #define Y_PROBE_OFFSET_FROM_EXTRUDER -8
   #define Y_PROBE_OFFSET_FROM_EXTRUDER -8 // KS
   // #define Z_PROBE_OFFSET_FROM_EXTRUDER -12.35
-  #define Z_PROBE_OFFSET_FROM_EXTRUDER -6.5 // KS
+  #define Z_PROBE_OFFSET_FROM_EXTRUDER 0 // KS  change this in slicer using G92 Z<offset> after homing
 
   #define Z_RAISE_BEFORE_HOMING 10       // (in mm) Raise Z before homing (G28) for Probe Clearance.
                                         // Be sure you have this distance over your Z_MAX_POS in case
