@@ -56,21 +56,23 @@
 #
 
 # This defines the board to compile for (see boards.h for your board's ID)
-HARDWARE_MOTHERBOARD ?= 11
+HARDWARE_MOTHERBOARD ?= 43 # KS
 
 # Arduino source install directory, and version number
 # On most linuxes this will be /usr/share/arduino
-ARDUINO_INSTALL_DIR  ?= ${HOME}/Arduino
-ARDUINO_VERSION      ?= 106
+# ARDUINO_INSTALL_DIR  ?= ${HOME}/Arduino
+ARDUINO_INSTALL_DIR  ?= /Applications/Arduino.app/Contents/Java
+ARDUINO_VERSION      ?= 10803
 
 # You can optionally set a path to the avr-gcc tools. Requires a trailing slash. (ex: /usr/local/avr-gcc/bin)
-AVR_TOOLS_PATH ?=
+# AVR_TOOLS_PATH ?= /usr/local/opt/avr-gcc/bin # KS
 
 #Programmer configuration
 UPLOAD_RATE        ?= 57600
-AVRDUDE_PROGRAMMER ?= arduino
+# AVRDUDE_PROGRAMMER ?= arduino
+AVRDUDE_PROGRAMMER ?= wiring # KS
 # on most linuxes this will be /dev/ttyACM0 or /dev/ttyACM1
-UPLOAD_PORT        ?= /dev/ttyUSB0
+UPLOAD_PORT        ?= /dev/ttyACM0 # KS
 
 #Directory used to build files in, contains all the build files, from object files to the final hex file
 #on linux it is best to put an absolute path like /home/username/tmp .
@@ -88,6 +90,7 @@ WIRE               ?= 0
 # Here the Arduino variant is selected by the board type
 # HARDWARE_VARIANT = "arduino", "Sanguino", "Gen7", ...
 # MCU = "atmega1280", "Mega2560", "atmega2560", "atmega644p", ...
+MCU=atmega2560 # KS
 
 #Gen7
 ifeq ($(HARDWARE_MOTHERBOARD),10)
@@ -257,6 +260,8 @@ TARGET = $(notdir $(CURDIR))
 VPATH = .
 VPATH += $(BUILD_DIR)
 VPATH += $(ARDUINO_INSTALL_DIR)/hardware/arduino/avr/cores/arduino
+VPATH += $(ARDUINO_INSTALL_DIR)/hardware/tools/avr/avr/include # KS
+VPATH += $(ARDUINO_INSTALL_DIR)/hardware/arduino/avr/variants/mega # KS
 
 VPATH += $(ARDUINO_INSTALL_DIR)/hardware/arduino/avr/libraries/SPI
 VPATH += $(ARDUINO_INSTALL_DIR)/hardware/arduino/avr/libraries/SPI/src
